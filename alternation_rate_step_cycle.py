@@ -28,6 +28,169 @@ def read_all_files():
 
     return csv_files_walk, csv_files_track
 
+def alt_rate_try(df,time_moments):
+    """
+    TODO: FIX the alternations to be set back to the location of when they switch from
+    0 to 1 or 0 to -1
+    """
+    df['greenButtonPressed'][df['greenButtonPressed'] == 1] = -1
+    # Initialize variables to keep track of trigger states and time
+    green_state = df['greenButtonPressed']
+    red_state = df['redButtonPressed']
+    time = df['t']
+
+    # Define the time constraint (500 milliseconds)
+    time_constraint = 0.3  # seconds
+
+    # Create a list to store the times of alternations
+    alternation_times_green_list = []
+    alternation_times_red_list = []
+    alternation_times_red = 0
+    alternation_times_green = 0
+
+
+    # Iterate through the DataFrame rows
+    # print(df)
+    # print(df.index[0])
+    # print(df.index[-1])
+    # print(range(df.index[0]+1, df.index[-1]))
+    # input()
+    for i in range(df.index[0]+1, df.index[-1]):
+        prev_green_state = green_state[i-1]
+        prev_red_state = red_state[i-1]
+        current_green_state = green_state[i]
+        current_red_state = red_state[i]
+
+        #GREEN ALTERNATIONS
+        if ((prev_green_state == 0 and current_green_state == -1)):
+            start_switch_green = time[i]
+            increment = i
+            end_switch_green = None
+            while True:
+                    if (red_state[increment] == 0 and red_state[increment-1] == 1):
+                        end_switch_green = time[increment]
+                        break
+                    if (start_switch_green - time[increment]) > time_constraint:
+                        break
+                    increment += 1
+                    if increment >= df.index[-1]:
+                        break
+            if end_switch_green != None:
+                if (end_switch_green - start_switch_green) < time_constraint:
+                    alternation_times_green += 1
+                    alternation_times_green_list.append(increment)
+            # i = increment
+
+        #edge case green switch
+        if ((green_state[i-1] == 0 and green_state[i] == -1)
+              and (red_state[i-2] == 1 and red_state[i-1] == 0)):
+            alternation_times_green += 1
+            alternation_times_green_list.append(i)
+
+        #edge case red goes from 1 to 0 and then the green happens later
+        if (current_red_state == 0 and prev_red_state == 1):
+            time_start_edge = time[i]
+            increment = i
+            while True:
+                if (green_state[increment] == -1 and green_state[increment-1] == 0):
+                    if (time[increment] - time_start_edge) < time_constraint:
+                        alternation_times_green += 1
+                        alternation_times_green_list.append(increment)
+                    elif (time[increment] - time_start_edge) > time_constraint:
+                        break
+                increment += 1
+                if increment >= df.index[-1]:
+                    break
+
+        #RED ALTERNATIONS
+        if ((prev_red_state == 0 and current_red_state == 1)):
+            start_switch_red = time[i]
+            end_switch_red = None
+            increment = i
+            while True:
+                    if (green_state[increment] == 0 and green_state[increment-1] == -1):
+                        end_switch_red = time[increment]
+                        break
+                    if (start_switch_red - time[increment]) > time_constraint:
+                        break
+                    increment += 1
+                    if increment >= df.index[-1]:
+                        break
+            if end_switch_red != None:
+                if (end_switch_red - start_switch_red) < time_constraint:
+                    alternation_times_red += 1
+                    alternation_times_red_list.append(increment)
+            # i = increment
+        #edge case red switch
+        if i < df.index[-1]:
+            if ((red_state[i-1] == 0 and red_state[i] == 1)
+                and (green_state[i-2] == -1 and green_state[i-1] == 0)):
+                alternation_times_red += 1
+                alternation_times_red_list.append(i)
+
+        #edge case green goes from -1 to 0 and then the red happens later
+        if (current_green_state == 0 and prev_green_state == -1):
+            time_start_edge = time[i]
+            increment = i
+            while True:
+                if (red_state[increment] == 1 and red_state[increment-1] == 0):
+                    if (time[increment] - time_start_edge) < time_constraint:
+                        alternation_times_red += 1
+                        alternation_times_red_list.append(increment)
+                    elif (time[increment] - time_start_edge) > time_constraint:
+                        break
+                increment += 1
+                if increment >= df.index[-1]:
+                    break
+
+    # # Plot the data
+    # plt.plot(time, green_state, marker='*', markersize=4, label='Green Button')
+    # plt.plot(time, red_state, marker='*', markersize=4, label='Red Button')
+    # # print(time[alternation_times_green])
+    # # Mark alternation points on the plot
+    # plt.scatter(time[alternation_times_green_list], 
+    #             green_state[alternation_times_green_list], color='green', marker='o',s=50, label='Alternation Point')
+    # plt.scatter(time[alternation_times_red_list], 
+    #             red_state[alternation_times_red_list], color='red', marker='o',s=50, label='Alternation Point')
+    # # Add labels and legend
+    # plt.xlabel('Time (s)')
+    # plt.ylabel('Button State')
+    # plt.legend()
+    # # Show the plot
+    # plt.show()
+
+
+    #extract stride moments
+    global_switches = sorted(list(set(alternation_times_green_list + alternation_times_red_list)))
+    save_alternation_stride_cycle = []
+    # print(time)
+    # print(time.index[-1])
+    for alt_switch_time in time[global_switches]:
+        # print(f'alternation: {alt_switch_time}')
+        # print(np.abs(time_moments.values - alt_switch_time))
+        # Calculate the absolute differences between alt_switch_time and value2
+        closest_index = np.argmin(np.abs(time_moments - alt_switch_time))
+        #IF the time is less than
+        if time_moments.iloc[closest_index] > alt_switch_time:
+            start_time = time_moments.iloc[closest_index-1]
+            end_time = time_moments.iloc[closest_index]
+            percentage = (alt_switch_time - start_time) / (end_time - start_time) * 100
+            save_alternation_stride_cycle.append(percentage)
+            # print(f'percentage LESS: {percentage}')
+        elif time_moments.iloc[closest_index] < alt_switch_time:
+            start_time = time_moments.iloc[closest_index]
+            if (closest_index+1) >= len(time_moments):
+                end_time = time_moments.iloc[closest_index]
+            else:
+                # print(closest_index)
+                # print(time.index[-1])
+                end_time = time_moments.iloc[closest_index+1]
+            percentage = (alt_switch_time - start_time) / (end_time - start_time) * 100
+            save_alternation_stride_cycle.append(percentage)
+            # print(f'percentage GREATER: {percentage}')
+    return save_alternation_stride_cycle
+
+
 def calc_alternation_location(resp_data,time_moments):
     switch_data = resp_data[['t','greenButtonPressed','redButtonPressed']]
     switch_data['greenButtonPressed'][switch_data['greenButtonPressed'] == 1] = -1
@@ -130,14 +293,14 @@ def calc_alternation_location(resp_data,time_moments):
             end_time = time_moments.iloc[closest_index]
             percentage = (alt_switch_time - start_time) / (end_time - start_time) * 100
             save_alternation_stride_cycle.append(percentage)
-            print(f'percentage LESS: {percentage}')
+            # print(f'percentage LESS: {percentage}')
         elif time_moments.iloc[closest_index] < alt_switch_time:
             start_time = time_moments.iloc[closest_index]
             try:
                 end_time = time_moments.iloc[closest_index+1]
                 percentage = (alt_switch_time - start_time) / (end_time - start_time) * 100
                 save_alternation_stride_cycle.append(percentage)
-                print(f'percentage GREATER: {percentage}')
+                # print(f'percentage GREATER: {percentage}')
             except:
                 print('IndexError: single positional indexer is out-of-bounds. The alternation happened at the end of the trial before the step cycle could be terminated.')
 
@@ -178,15 +341,25 @@ def get_each_trial(track,resp,trial):
 def main():
     csv_files_walk, csv_files_track = read_all_files()
     save_all_alt_stride = []
-    for resp, track in zip(csv_files_walk,csv_files_track):
+    fig, axes = plt.subplots(2, 3, figsize=(12, 8))
+    fig.suptitle("Histograms for Each Participant", fontsize=16)  
+    for i, (resp, track) in enumerate(zip(csv_files_walk, csv_files_track)):
         for trial in range(1,9):
+            print(f'trial: {trial}')
             track_df, resp_df = get_each_trial(track,resp,trial)
             time_moments = extract_stride_moments(track_df)
-            save_all_alt_stride.append(calc_alternation_location(resp_df,time_moments))
-    df = pd.DataFrame([item for sublist in save_all_alt_stride for item in sublist],
-                 columns=['Percent Step Cycle'])
-    sns.histplot(data=df, x="Percent Step Cycle",bins=15,kde=True)
-    plt.savefig('alternations_step_cycle_first_attempt.png',dpi=400)
-    plt.close()
+            save_all_alt_stride.append(alt_rate_try(resp_df,time_moments))
+            # save_all_alt_stride.append(calc_alternation_location(resp_df,time_moments))
+        df = pd.DataFrame([item for sublist in save_all_alt_stride for item in sublist],
+                    columns=['Percent Step Cycle'])
+        # Plot with 10% bins in the appropriate subplot
+        bin_edges = [i for i in range(0, 101, 10)]
+        row, col = divmod(i, 3)  # Calculate the row and column for the subplot
+        ax = axes[row, col]
+        sns.histplot(data=df, x="Percent Step Cycle", bins=bin_edges, kde=True, ax=ax)
+        ax.set_title(f"Participant {i + 1}")
+    plt.tight_layout()
+    plt.savefig('alternations_step_cycle_first_all_participants.png',dpi=400)
+    plt.show()
 if __name__ == "__main__":
     main()
