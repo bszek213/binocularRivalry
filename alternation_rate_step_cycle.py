@@ -7,6 +7,10 @@ import glob
 import seaborn as sns
 from scipy import stats
 import matplotlib.pyplot as plt
+from scipy.stats import shapiro, kstest, norm, uniform, ttest_rel 
+import statsmodels.api as sm
+from fitter import Fitter, get_common_distributions, get_distributions
+from tqdm import tqdm
 
 def read_all_files():
     directory = "/home/brianszekely/Desktop/ProjectsResearch/Binocular_Rivalry/Data/*/" #POPOS
@@ -338,11 +342,133 @@ def get_each_trial(track,resp,trial):
     resp_df = pd.read_csv(resp)
     return track_df[track_df['trial'] == trial],resp_df[resp_df['trial'] == trial]
 
+def fit_dist(df):
+    per_resp = df['Percent Step Cycle'].values
+    bin_edges = [i for i in range(0, 101, 10)]
+    f = Fitter(per_resp, bins=bin_edges, distributions=get_common_distributions())
+
+    f.fit()
+    plt.figure()
+    f.hist()
+    f.plot_pdf()
+    plt.ylabel('Count')
+    plt.xlabel('Percent Step Cycle')
+    plt.savefig('alternations_step_cycle_fitted_dist.png',dpi=400)
+    plt.close()
+
+def t_test_bins(dict_inst,bin_edges):
+    """
+    45 comparisons. need to apply correction for mulitple comparisons
+    """
+    t_test_results = []
+    # bins_dict = {}
+    # for _, data1 in dict_inst.items():
+    #     bin_edges, bin_counts = data1
+    #     for i, edge in enumerate(bin_edges):
+    #         if edge not in bins_dict:
+    #             bins_dict[edge] = []
+    #         bins_dict[edge].append(bin_counts[i])
+    bins_dict = {}
+    for edges in bin_edges:
+        save_bins_per_edge_per_part = []
+        for _, data1 in dict_inst.items():
+            bin_edges, bin_counts = data1
+            if edges == 100:
+                index_val = bin_edges.index(100) -  1 
+                corresponding_data = bin_counts[index_val]  
+                save_bins_per_edge_per_part.append(corresponding_data)
+            else:
+                corresponding_data = bin_counts[bin_edges.index(edges)]
+                save_bins_per_edge_per_part.append(corresponding_data)
+        bins_dict[edges] = save_bins_per_edge_per_part
+    df = pd.DataFrame(bins_dict)
+
+    columns = df.columns
+    num_columns = len(columns)
+
+    # Initialize a matrix for p-values
+    p_values_matrix = np.zeros((num_columns, num_columns))
+
+    # Perform t-tests and populate the p-values matrix
+    # Perform t-tests and populate the p-values matrix
+    for i in range(num_columns):
+        for j in range(num_columns):
+            column1 = df[columns[i]]
+            column2 = df[columns[j]]
+            _, p_value = ttest_rel(column1, column2)
+            p_values_matrix[i, j] = p_value
+
+    # Create a DataFrame to display the p-values matrix
+    p_values_df = pd.DataFrame(p_values_matrix, columns=columns, index=columns)
+
+    print(p_values_df)
+    p_values_df = p_values_df.astype(float)
+
+    # # Apply Bonferroni correction
+    # alpha = 0.05  # Set your desired significance level
+    # n_comparisons = p_values_df.size
+    # bonferroni_threshold = alpha / n_comparisons
+    # significant_cells = (p_values_df < bonferroni_threshold) & (p_values_df > 0)
+
+    # # Create a heatmap with significant cells highlighted in light red using Matplotlib
+    # plt.figure(figsize=(12, 10))
+    # heatmap = plt.imshow(p_values_df, cmap='Blues', aspect='auto', vmin=0, vmax=1)
+
+    # # Display p-values within significant cells
+    # for i in range(p_values_df.shape[0]):
+    #     for j in range(p_values_df.shape[1]):
+    #         p_value = p_values_df.iloc[i, j]
+    #         if significant_cells.iloc[i, j]:
+    #             plt.text(j, i, f'{p_value:.6f}', ha='center', va='center', color='black')
+
+    # # Highlight significant cells in light red
+    # significant_cells = significant_cells.astype(float)
+    # heatmap = plt.imshow(significant_cells, cmap='gray', aspect='auto', vmin=0, vmax=1, extent=[-0.5, significant_cells.shape[1] - 0.5, -0.5, significant_cells.shape[0] - 0.5])
+
+    # plt.title('P-Values Heatmap (Bonferroni Corrected)')
+    # # plt.colorbar(heatmap, orientation='vertical', label='P-Values')
+    # # plt.grid(True, linestyle='--', linewidth=0.5, color='black', which='both')
+
+    # # Label the axes with column names (0-100)
+    # plt.xticks(range(p_values_df.shape[1]), p_values_df.columns)
+    # plt.yticks(range(p_values_df.shape[0]), p_values_df.index)
+
+    # plt.show()
+    column_headers = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    row_headers = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    # Number of comparisons
+    # Number of comparisons
+    num_comparisons = 45
+
+    # Calculate the Bonferroni corrected threshold
+    bonferroni_threshold = 0.05 / num_comparisons
+
+    # Apply Bonferroni correction to your p-values
+    corrected_df = p_values_df * num_comparisons
+
+    # Create a Seaborn heatmap
+    plt.figure(figsize=(10, 8))
+
+    # Create a mask for p-values less than the threshold
+    mask = corrected_df < bonferroni_threshold
+
+    # Create a custom color palette
+    colors = sns.light_palette("blue", as_cmap=True)
+
+    # Create the heatmap with p-value annotations
+    sns.heatmap(corrected_df, annot=True, fmt=".5f", cmap=colors, cbar=False, xticklabels=True, yticklabels=True, mask=~mask)
+
+    plt.show()
+
+
+
 def main():
     csv_files_walk, csv_files_track = read_all_files()
     save_all_alt_stride = []
     fig, axes = plt.subplots(2, 3, figsize=(12, 8))
-    fig.suptitle("Histograms for Each Participant", fontsize=16)  
+    # fig.suptitle("Histograms for Each Participant", fontsize=16)  
+    bin_count_subject = {}
+    combined_df = pd.DataFrame(columns=['Percent Step Cycle'])  
     for i, (resp, track) in enumerate(zip(csv_files_walk, csv_files_track)):
         for trial in range(1,9):
             print(f'trial: {trial}')
@@ -352,14 +478,57 @@ def main():
             # save_all_alt_stride.append(calc_alternation_location(resp_df,time_moments))
         df = pd.DataFrame([item for sublist in save_all_alt_stride for item in sublist],
                     columns=['Percent Step Cycle'])
+        df.sort_values(by=['Percent Step Cycle'],inplace=True)
+        df = df[df['Percent Step Cycle'] != np.inf]
+
         # Plot with 10% bins in the appropriate subplot
         bin_edges = [i for i in range(0, 101, 10)]
         row, col = divmod(i, 3)  # Calculate the row and column for the subplot
         ax = axes[row, col]
         sns.histplot(data=df, x="Percent Step Cycle", bins=bin_edges, kde=True, ax=ax)
+        bin_counts = np.histogram(df["Percent Step Cycle"], bins=bin_edges)[0]
+        bin_count_subject[i] = [bin_edges, bin_counts]
+        # print(bin_count_subject)
         ax.set_title(f"Participant {i + 1}")
+        combined_df = pd.concat([combined_df, df])
     plt.tight_layout()
     plt.savefig('alternations_step_cycle_first_all_participants.png',dpi=400)
-    plt.show()
+    plt.close()
+    # plt.show()
+    combined_df.sort_values(by=['Percent Step Cycle'], inplace=True)
+
+    #t-test compare bin counts
+    t_test_bins(bin_count_subject,bin_edges)
+    input()
+
+    #check normality of the data
+    # stat, p = shapiro(df['Percent Step Cycle'])
+
+    # Perform the Kolmogorov-Smirnov test
+    _, ks_p_value = kstest(df['Percent Step Cycle'], norm.cdf)
+    if ks_p_value < 0.05:
+        print("The data significantly differs from a normal distribution.")
+    else:
+        print("The data does not significantly differ from a normal distribution.")
+
+    _, ks_p_value_uniform = kstest(df['Percent Step Cycle'], uniform.cdf)
+    if ks_p_value_uniform < 0.05:
+        print("The data significantly differs from a uniform distribution.")
+    else:
+        print("The data does not significantly differ from a uniform distribution.")
+
+    #qqplot normal distribution
+    # plt.figure()
+    # sm.qqplot(combined_df['Percent Step Cycle'], line='s')
+    # plt.title("Q-Q Plot")
+    # plt.savefig('qq_plot_all_resp_stride.png',dpi=400)
+    # plt.close()
+
+    #find best hist
+    # fit_dist(combined_df)
+
+    
+
+
 if __name__ == "__main__":
     main()
