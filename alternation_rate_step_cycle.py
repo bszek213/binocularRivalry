@@ -11,6 +11,9 @@ from scipy.stats import shapiro, kstest, norm, uniform, ttest_rel
 import statsmodels.api as sm
 from fitter import Fitter, get_common_distributions, get_distributions
 from tqdm import tqdm
+from matplotlib import rc,rcParams
+rc('font', weight='bold')
+rcParams['text.latex.preamble'] = [r'\usepackage{sfmath} \boldmath']
 
 def read_all_files():
     directory = "/home/brianszekely/Desktop/ProjectsResearch/Binocular_Rivalry/Data/*/" #POPOS
@@ -368,8 +371,8 @@ def fit_dist(df):
     plt.figure()
     f.hist()
     f.plot_pdf()
-    plt.ylabel('Count')
-    plt.xlabel('Percent Step Cycle')
+    plt.ylabel('Count',fontweight='bold')
+    plt.xlabel('Percent Step Cycle',fontweight='bold')
     plt.savefig('alternations_step_cycle_fitted_dist.png',dpi=400)
     plt.close()
 
@@ -501,20 +504,30 @@ def main():
         row, col = divmod(i, 3)  # Calculate the row and column for the subplot
         ax = axes[row, col]
         sns.histplot(data=df, x="Percent Step Cycle", bins=bin_edges, kde=True, ax=ax)
+        ax.set_ylabel('Count', fontweight='bold')
+        ax.set_xlabel('Percent Step Cycle', fontweight='bold')
         bin_counts = np.histogram(df["Percent Step Cycle"], bins=bin_edges)[0]
         bin_count_subject[i] = [bin_edges, bin_counts]
         # print(bin_count_subject)
-        ax.set_title(f"Participant {i + 1}")
+        ax.set_title(f"Participant {i + 1}",fontweight='bold')
         combined_df = pd.concat([combined_df, df])
     plt.tight_layout()
     plt.savefig('alternations_step_cycle_first_all_participants.png',dpi=400)
     plt.close()
     # plt.show()
+    
+    #COMBINED PLOT
     combined_df.sort_values(by=['Percent Step Cycle'], inplace=True)
-
+    bin_edges = [i for i in range(0, 101, 10)]
+    sns.histplot(data=combined_df, x="Percent Step Cycle", bins=bin_edges, kde=True)
+    plt.ylabel('Count',fontweight='bold')
+    plt.xlabel('Percent Step Cycle',fontweight='bold')
+    plt.tight_layout()
+    plt.savefig('alternations_step_cycle_first_combined.png',dpi=400)
+    plt.close()
     #t-test compare bin counts
-    t_test_bins(bin_count_subject,bin_edges)
-    input()
+    # t_test_bins(bin_count_subject,bin_edges)
+    # input()
 
     #check normality of the data
     # stat, p = shapiro(df['Percent Step Cycle'])

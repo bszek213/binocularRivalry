@@ -47,7 +47,7 @@ for i in range(p_values_df.shape[0]):
         p_value = p_values_df.iloc[i, j]
         if not np.isnan(p_value):
             if p_value < bonferroni_threshold:
-                color = 'red'
+                color = 'tab:blue'
             else:
                 color = 'white'
             rect = patches.Rectangle((j, i), 1, 1, linewidth=1, edgecolor='black', facecolor=color)
