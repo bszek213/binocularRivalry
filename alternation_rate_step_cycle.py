@@ -335,6 +335,23 @@ def extract_stride_moments(track):
     # plt.ylabel('Head Y-position Height (m)')
     # plt.legend()
     # plt.show()
+
+    # Extract data between the third and fourth peaks just for step percentage analysis - example
+    # start_peak = peaks_head[2]
+    # end_peak = peaks_head[3]
+    # extracted_data = sub_df['position'].iloc[start_peak:end_peak + 1]
+    # # Generate x-axis values
+    # vals = np.linspace(0, 100, len(extracted_data))
+    # # Plot the extracted data with a y-axis range from 0 to 100
+    # plt.figure()
+    # plt.plot(vals, extracted_data, label='head Y Position')
+    # plt.xlabel('Samples')
+    # plt.ylabel('Head Y-position Height (m)')
+    # # plt.ylim(0, 100)  # Set y-axis range from 0 to 100
+    # plt.legend()
+    # plt.show()
+
+    
     return sub_df['t'].iloc[peaks_head]
 
 def get_each_trial(track,resp,trial):
@@ -459,8 +476,6 @@ def t_test_bins(dict_inst,bin_edges):
     sns.heatmap(corrected_df, annot=True, fmt=".5f", cmap=colors, cbar=False, xticklabels=True, yticklabels=True, mask=~mask)
 
     plt.show()
-
-
 
 def main():
     csv_files_walk, csv_files_track = read_all_files()
