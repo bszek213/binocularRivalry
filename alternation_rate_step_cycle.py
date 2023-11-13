@@ -47,6 +47,16 @@ def alt_rate_try(df,time_moments):
     red_state = df['redButtonPressed']
     time = df['t']
 
+    #GET TOTAL TIME MIXED PERCEPTS
+    time_diff = df['t'].diff()
+    mixed_time = 0
+    for t,green,red in zip(time_diff,green_state,red_state):
+        if green == 0 and red == 0 and not np.isnan(t):
+            mixed_time += t
+    percent_total_mixed = (mixed_time / df['t'].iloc[-1]) * 100
+
+    with open('mixed_percentage_per_trial.txt', 'a') as file:
+        file.write(f'{percent_total_mixed}\n')
     # Define the time constraint (500 milliseconds)
     time_constraint = 0.3  # seconds
 
