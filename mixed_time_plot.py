@@ -7,9 +7,9 @@ the mean percentage is 2.83%
 """
 def hist_mixed():
     df = pd.read_csv('mixed_percentage_per_trial.txt', sep='\t', header=None)
-    print(df.mean())
+    print(f'{df.mean()} +/-  {df.std()}')
     df.columns = ['mixed_time']
-    sns.histplot(df['mixed_time'], bins=40, kde=True, color='tab:blue')
+    sns.histplot(df['mixed_time'], bins=40, kde=False, color='tab:blue')
     # custom_xticks = range(0, int(max(df['mixed_time'])), 20)  # Adjust range and step size as needed
     # plt.xticks(custom_xticks)
     # plt.title('Distribution of mixed_time')   
