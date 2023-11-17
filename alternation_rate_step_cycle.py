@@ -36,6 +36,36 @@ def read_all_files():
 
     return csv_files_walk, csv_files_track
 
+def read_stand_files():
+    directory = "/home/brianszekely/Desktop/ProjectsResearch/Binocular_Rivalry/Data/*/" #POPOS
+    csv_files = [] 
+    for abs_path in glob.glob(directory, recursive = True):
+        temp_walk = glob.glob(os.path.join(abs_path,'Stationary',"*.csv"))
+        if 'Response' in str(temp_walk):
+            for file in temp_walk:
+                if 'Response' in str(file):
+                    csv_files.append(file)
+
+    return sorted(csv_files)
+
+def alt_rate_stand(df):
+    df['greenButtonPressed'][df['greenButtonPressed'] == 1] = -1
+    # Initialize variables to keep track of trigger states and time
+    green_state = df['greenButtonPressed']
+    red_state = df['redButtonPressed']
+    time = df['t']
+
+    #GET TOTAL TIME MIXED PERCEPTS
+    time_diff = df['t'].diff()
+    mixed_time = 0
+    for t,green,red in zip(time_diff,green_state,red_state):
+        if green == 0 and red == 0 and not np.isnan(t):
+            mixed_time += t
+    percent_total_mixed = (mixed_time / df['t'].iloc[-1]) * 100
+
+    with open('mixed_percentage_per_trial_stand.txt', 'a') as file:
+        file.write(f'{percent_total_mixed}\n')
+
 def alt_rate_try(df,time_moments):
     """
     TODO: FIX the alternations to be set back to the location of when they switch from
@@ -576,6 +606,15 @@ def t_test_bins(dict_inst,bin_edges):
     # plt.show()
 
 def main():
+    #standing alternation and mixed percepts
+    csv_stand_files = read_stand_files()
+    for i, resp in enumerate(csv_stand_files):
+        for trial in range(1,9):
+            print(f'trial: {trial}')
+            resp_df = pd.read_csv(resp)
+            trial_df = resp_df[resp_df['trial'] == trial]
+            alt_rate_stand(trial_df)
+    #Walk analysis
     csv_files_walk, csv_files_track = read_all_files()
     save_all_alt_stride = []
     # fig, axes = plt.subplots(2, 3, figsize=(12, 8))
