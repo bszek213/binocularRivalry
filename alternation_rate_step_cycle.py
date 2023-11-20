@@ -422,125 +422,186 @@ def t_test_bins(dict_inst,bin_edges):
     45 comparisons. need to apply correction for mulitple comparisons
     """
     # Bin data 
+    # Extract bin edges and bin counts
+    bin_edges = dict_inst[0][0]
+
+    # Initialize bins_dict
     bins_dict = {}
-    for edges in bin_edges:
+
+    # Iterate over bin edges
+    for edge in bin_edges:
         save_bins_per_edge_per_part = []
-        for _, data1 in dict_inst.items():
-            bin_edges, bin_counts = data1
-            if edges == 100:
-                index_val = bin_edges.index(100) -  1 
-                corresponding_data = bin_counts[index_val]  
-                save_bins_per_edge_per_part.append(corresponding_data)
+        
+        # Iterate over each person's data
+        for _, data in dict_inst.items():
+            bin_edges, bin_counts = data
+            # Use np.digitize to find the bin index
+            index_val = np.digitize(edge, bin_edges, right=True) - 1
+            # Check if the index is within bounds
+            if 0 <= index_val < len(bin_counts):
+                corresponding_data = bin_counts[index_val]
             else:
-                corresponding_data = bin_counts[bin_edges.index(edges)]
-                save_bins_per_edge_per_part.append(corresponding_data)
-        bins_dict[edges] = save_bins_per_edge_per_part
-    df = pd.DataFrame(bins_dict)
-    # Sample p-values DataFrame (replace this with your actual data)
-    p_values_df = pd.DataFrame({
-        0: [np.nan, 0.001039, 0.000335, 0.000980, 0.000234, 0.008933, 0.011059, 0.001978, 0.000003, 0.012197, 0.012197],
-        10: [0.001039, np.nan, 0.106549, 0.793127, 0.004684, 0.365596, 0.260472, 0.022320, 0.002130, 0.004889, 0.004889],
-        20: [0.000335, 0.106549, np.nan, 0.160248, 0.011819, 0.681010, 0.429568, 0.000263, 0.006572, 0.000062, 0.000062],
-        30: [0.000980, 0.793127, 0.160248, np.nan, 0.001050, 0.192295, 0.140824, 0.113315, 0.000264, 0.025448, 0.025448],
-        40: [0.000234, 0.004684, 0.011819, 0.001050, np.nan, 0.004302, 0.027337, 0.002222, 0.034771, 0.001206, 0.001206],
-        50: [0.008933, 0.365596, 0.681010, 0.192295, 0.004302, np.nan, 0.112484, 0.077366, 0.085627, 0.033523, 0.033523],
-        60: [0.011059, 0.260472, 0.429568, 0.140824, 0.027337, 0.112484, np.nan, 0.068358, 0.359018, 0.034158, 0.034158],
-        70: [0.001978, 0.022320, 0.000263, 0.113315, 0.002222, 0.077366, 0.068358, np.nan, 0.000278, 0.000110, 0.000110],
-        80: [0.000003, 0.002130, 0.006572, 0.000264, 0.034771, 0.085627, 0.359018, 0.000278, np.nan, 0.000105, 0.000105],
-        90: [0.012197, 0.004889, 0.000062, 0.025448, 0.001206, 0.033523, 0.034158, 0.000110, 0.000105, np.nan, np.nan],
-        100: [0.012197, 0.004889, 0.000062, 0.025448, 0.001206, 0.033523, 0.034158, 0.000110, 0.000105, np.nan, np.nan]
-    })
-    p_values_df.index = p_values_df.columns
-    # Number of comparisons
-    num_comparisons = 45  # Adjust the number of comparisons based on your data
+                corresponding_data = None
+            save_bins_per_edge_per_part.append(corresponding_data)
+        
+        bins_dict[edge] = save_bins_per_edge_per_part
 
-    # Calculate the Bonferroni corrected threshold
-    bonferroni_threshold = 0.05 / num_comparisons
-
-    # Create the heatmap with cell blocks
-    fig, ax = plt.subplots(2, 1, figsize=(12, 8))
-    t_test_results = []
-    # bins_dict = {}
-    # for _, data1 in dict_inst.items():
-    #     bin_edges, bin_counts = data1
-    #     for i, edge in enumerate(bin_edges):
-    #         if edge not in bins_dict:
-    #             bins_dict[edge] = []
-    #         bins_dict[edge].append(bin_counts[i])
+    # Create the DataFrame after the outer loop
+    df = pd.DataFrame(bins_dict).dropna(axis=1, how='all')
     # PLOT OF ALL BARPLOTS
+    fig, ax = plt.subplots(2, 1, figsize=(12, 8))
     #histogram with error bars
     mean_data, std_data = df.mean(), df.sem()
-    # bin_edges = [i for i in range(0, 101, 10)]
+    # Create an array of x-values for the bars
+    # x_values = np.arange(len(mean_data))
+    # ax[0].bar(x_values, mean_data, width=1, 
+    #           yerr=std_data, capsize=5, tick_label=df.columns, 
+    #           edgecolor='black', color='tab:blue') #x_values - bar_width / 2, mean_data
+    # # ax[0].set_xlim(x_values_bar[0] - bar_width / 2, x_values_bar[-1] + bar_width / 2)
+    # ax[0].set_xlim(x_values[0] - 0.5, x_values[-1] + 0.5) #remove white space
+    # ax[0].set_xlabel('Percent Step Cycle', fontsize=12, fontweight='bold',labelpad=20)
+    # ax[0].set_ylabel('Count', fontsize=12, fontweight='bold')
+
+    # Define the bin edges
+    bin_edges = [i for i in range(0, 101, 10)]
+
     # Create an array of x-values for the bars
     x_values = np.arange(len(mean_data))
-    cell_size = 1.0 / p_values_df.shape[1]
-    bar_width = cell_size
-    x_values_bar = np.arange(p_values_df.shape[1])
-    x_positions = np.arange(p_values_df.shape[1]) * cell_size
+
     ax[0].bar(x_values, mean_data, width=1, 
-              yerr=std_data, capsize=5, tick_label=df.columns, 
-              edgecolor='black', color='tab:blue') #x_values - bar_width / 2, mean_data
-    # ax[0].set_xlim(x_values_bar[0] - bar_width / 2, x_values_bar[-1] + bar_width / 2)
-    ax[0].set_xlim(x_values[0] - 0.5, x_values[-1] + 0.5) #remove white space
-    ax[0].set_xlabel('Percent Step Cycle', fontsize=12, fontweight='bold')
+            yerr=std_data, capsize=5, color='tab:blue', edgecolor='black')
+
+    # Set the x-axis ticks and labels
+    ax[0].set_xticks(x_values)
+    ax[0].set_xticklabels([f'{bin_edges[i]}-{bin_edges[i+1]}' for i in range(len(bin_edges)-1)])
+
+    ax[0].set_xlabel('Percent Step Cycle', fontsize=12, fontweight='bold', labelpad=20)
     ax[0].set_ylabel('Count', fontsize=12, fontweight='bold')
 
-    #PLOT THE GRID OF P VALUES
-    for i in range(p_values_df.shape[0]):
-        for j in range(p_values_df.shape[1]):
-            p_value = p_values_df.iloc[i, j]
-            if not np.isnan(p_value):
-                if p_value < bonferroni_threshold:
-                    color = 'tab:blue'
-                else:
-                    color = 'white'
-                rect = patches.Rectangle((j, i), 1, 1, linewidth=1, edgecolor='black', facecolor=color)
-                # rect = patches.Rectangle((j - bar_width / 2, i), bar_width, 1, linewidth=1, edgecolor='black', facecolor=color)
-                print(f'x position: {j}')
-                ax[1].add_patch(rect)
-    # Overlay grid lines for the second subplot
-    ax[1].grid(True, color='black', linestyle='-', linewidth=1)
+    #T-TEST FOR EACH PART OF THE STRIDE CYCLE
+    columns = df.columns
+    num_columns = len(columns)
+    results = []
+    num_tests = len(columns) * (len(columns) - 1) // 2
+    for i in range(len(columns)):
+        for j in range(i + 1, len(columns)):
+            column1 = columns[i]
+            column2 = columns[j]
+            t_stat, p_value = ttest_rel(df[column1], df[column2])
+            corrected_p_value = p_value * num_tests
+            results.append((column1, column2, t_stat, corrected_p_value))
 
-    # Set x and y axis labels for the second subplot
-    ax[1].set_xticks(range(p_values_df.shape[1]))
-    ax[1].set_xticklabels(p_values_df.columns)
-    ax[1].set_yticks(range(p_values_df.shape[0]))
-    ax[1].set_yticklabels(p_values_df.index)
-
-    x_intervals = [0.5, 4, 7, 9.5]  # Adjust as needed (0 to 100)
-    y = -1  # Slightly above the x-axis label
+    # Create a DataFrame with the results
+    results_df = pd.DataFrame(results, columns=['Column1', 'Column2', 't_stat', 'p_value'])
+    results_df = results_df.replace(np.nan, 1)
+    cmap = sns.color_palette("YlOrRd", as_cmap=True)
+    # Pivot the results DataFrame for easy plotting
+    heatmap_data = results_df.pivot(index='Column1', columns='Column2', values='p_value')
+    # Create a heatmap
+    sns.heatmap(ax=ax[1],data=heatmap_data, annot=True, fmt=".4f", cmap=cmap, vmin=0, vmax=0.05)
+    ax[1].get_figure().set_size_inches(12, 8)
+    ax[1].set_ylabel('Percent Step Cycle', fontsize=12, fontweight='bold')
+    ax[1].set_xlabel('Percent Step Cycle', fontsize=12, fontweight='bold')
+    x_intervals = [0, 4, 7, 9]  # Adjust as needed (0 to 100)
+    y = -15  # Slightly above the x-axis label
     labels = ["Toe Off", "Heel Strike", "Midstance", "Toe Off"]
 
     for x, label in zip(x_intervals, labels):
-        ax[1].text(x, y, label, fontsize=8, ha='center', va='top', fontweight='bold')
-
-    # Add labels along the y-axis
-    y_intervals = [0.5, 4, 7, 9.5]  # Adjust as needed (0 to 100)
-    x_val = -0.35  # Slightly above the x-axis label
-    # labels_y = ["Label1", "Label2", "Label3"]
-
-    for y, label in zip(y_intervals, labels):
-        ax[1].text(x_val, y, label, fontsize=8, ha='right', va='bottom', fontweight='bold', rotation=90)
-
-    ax[1].set_ylabel('Percent Step Cycle (%)',fontweight='bold',fontsize=12,labelpad=25)
-    ax[1].set_xlabel('Percent Step Cycle (%)',fontweight='bold',fontsize=12, labelpad=25) 
-
+        ax[0].text(x, y, label, fontsize=8, ha='center', va='top', fontweight='bold')
     plt.tight_layout()
     plt.savefig('multi_plot_grid_strep_cycle_error_bars.png',dpi=350)
-    plt.show()
-    # columns = df.columns
-    # num_columns = len(columns)
+    plt.close()
+    # Sample p-values DataFrame (replace this with your actual data)
+    # p_values_df = pd.DataFrame({
+    #     0: [np.nan, 0.001039, 0.000335, 0.000980, 0.000234, 0.008933, 0.011059, 0.001978, 0.000003, 0.012197, 0.012197],
+    #     10: [0.001039, np.nan, 0.106549, 0.793127, 0.004684, 0.365596, 0.260472, 0.022320, 0.002130, 0.004889, 0.004889],
+    #     20: [0.000335, 0.106549, np.nan, 0.160248, 0.011819, 0.681010, 0.429568, 0.000263, 0.006572, 0.000062, 0.000062],
+    #     30: [0.000980, 0.793127, 0.160248, np.nan, 0.001050, 0.192295, 0.140824, 0.113315, 0.000264, 0.025448, 0.025448],
+    #     40: [0.000234, 0.004684, 0.011819, 0.001050, np.nan, 0.004302, 0.027337, 0.002222, 0.034771, 0.001206, 0.001206],
+    #     50: [0.008933, 0.365596, 0.681010, 0.192295, 0.004302, np.nan, 0.112484, 0.077366, 0.085627, 0.033523, 0.033523],
+    #     60: [0.011059, 0.260472, 0.429568, 0.140824, 0.027337, 0.112484, np.nan, 0.068358, 0.359018, 0.034158, 0.034158],
+    #     70: [0.001978, 0.022320, 0.000263, 0.113315, 0.002222, 0.077366, 0.068358, np.nan, 0.000278, 0.000110, 0.000110],
+    #     80: [0.000003, 0.002130, 0.006572, 0.000264, 0.034771, 0.085627, 0.359018, 0.000278, np.nan, 0.000105, 0.000105],
+    #     90: [0.012197, 0.004889, 0.000062, 0.025448, 0.001206, 0.033523, 0.034158, 0.000110, 0.000105, np.nan, np.nan],
+    #     100: [0.012197, 0.004889, 0.000062, 0.025448, 0.001206, 0.033523, 0.034158, 0.000110, 0.000105, np.nan, np.nan]
+    # })
+    # p_values_df.index = p_values_df.columns
+    # # Number of comparisons
+    # num_comparisons = 45  # Adjust the number of comparisons based on your data
+
+    # # Calculate the Bonferroni corrected threshold
+    # bonferroni_threshold = 0.05 / num_comparisons
+
+    # # Create the heatmap with cell blocks
+    # fig, ax = plt.subplots(2, 1, figsize=(12, 8))
+    # t_test_results = []
+    # # bins_dict = {}
+    # # for _, data1 in dict_inst.items():
+    # #     bin_edges, bin_counts = data1
+    # #     for i, edge in enumerate(bin_edges):
+    # #         if edge not in bins_dict:
+    # #             bins_dict[edge] = []
+    # #         bins_dict[edge].append(bin_counts[i])
+
+
+    # #PLOT THE GRID OF P VALUES
+    # for i in range(p_values_df.shape[0]):
+    #     for j in range(p_values_df.shape[1]):
+    #         p_value = p_values_df.iloc[i, j]
+    #         if not np.isnan(p_value):
+    #             if p_value < bonferroni_threshold:
+    #                 color = 'tab:blue'
+    #             else:
+    #                 color = 'white'
+    #             rect = patches.Rectangle((j, i), 1, 1, linewidth=1, edgecolor='black', facecolor=color)
+    #             # rect = patches.Rectangle((j - bar_width / 2, i), bar_width, 1, linewidth=1, edgecolor='black', facecolor=color)
+    #             print(f'x position: {j}')
+    #             ax[1].add_patch(rect)
+    # # Overlay grid lines for the second subplot
+    # ax[1].grid(True, color='black', linestyle='-', linewidth=1)
+
+    # # Set x and y axis labels for the second subplot
+    # ax[1].set_xticks(range(p_values_df.shape[1]))
+    # ax[1].set_xticklabels(p_values_df.columns)
+    # ax[1].set_yticks(range(p_values_df.shape[0]))
+    # ax[1].set_yticklabels(p_values_df.index)
+
+    # x_intervals = [0.5, 4, 7, 9.5]  # Adjust as needed (0 to 100)
+    # y = -1  # Slightly above the x-axis label
+    # labels = ["Toe Off", "Heel Strike", "Midstance", "Toe Off"]
+
+    # for x, label in zip(x_intervals, labels):
+    #     ax[1].text(x, y, label, fontsize=8, ha='center', va='top', fontweight='bold')
+
+    # # Add labels along the y-axis
+    # y_intervals = [0.5, 4, 7, 9.5]  # Adjust as needed (0 to 100)
+    # x_val = -0.35  # Slightly above the x-axis label
+    # # labels_y = ["Label1", "Label2", "Label3"]
+
+    # for y, label in zip(y_intervals, labels):
+    #     ax[1].text(x_val, y, label, fontsize=8, ha='right', va='bottom', fontweight='bold', rotation=90)
+
+    # ax[1].set_ylabel('Percent Step Cycle (%)',fontweight='bold',fontsize=12,labelpad=25)
+    # ax[1].set_xlabel('Percent Step Cycle (%)',fontweight='bold',fontsize=12, labelpad=25) 
+
+    # plt.tight_layout()
+    # plt.savefig('multi_plot_grid_strep_cycle_error_bars.png',dpi=350)
+    # plt.show()
+
 
     # Initialize a matrix for p-values
     # p_values_matrix = np.zeros((num_columns, num_columns))
 
-    # Perform t-tests and populate the p-values matrix
-    # Perform t-tests and populate the p-values matrix
+    # # Perform t-tests and populate the p-values matrix
     # for i in range(num_columns):
     #     for j in range(num_columns):
     #         column1 = df[columns[i]]
     #         column2 = df[columns[j]]
+    #         # print(column1)
+    #         # print('=====')
+    #         # print(column2)
     #         _, p_value = ttest_rel(column1, column2)
+    #         # print(p_value)
     #         p_values_matrix[i, j] = p_value
 
     # # Create a DataFrame to display the p-values matrix
@@ -548,37 +609,37 @@ def t_test_bins(dict_inst,bin_edges):
 
     # print(p_values_df)
     # p_values_df = p_values_df.astype(float)
+    # input()
+    # # Apply Bonferroni correction
+    # alpha = 0.05  # Set your desired significance level
+    # n_comparisons = p_values_df.size
+    # bonferroni_threshold = alpha / n_comparisons
+    # significant_cells = (p_values_df < bonferroni_threshold) & (p_values_df > 0)
 
-    # # # Apply Bonferroni correction
-    # # alpha = 0.05  # Set your desired significance level
-    # # n_comparisons = p_values_df.size
-    # # bonferroni_threshold = alpha / n_comparisons
-    # # significant_cells = (p_values_df < bonferroni_threshold) & (p_values_df > 0)
+    # # Create a heatmap with significant cells highlighted in light red using Matplotlib
+    # plt.figure(figsize=(12, 10))
+    # heatmap = plt.imshow(p_values_df, cmap='Blues', aspect='auto', vmin=0, vmax=1)
 
-    # # # Create a heatmap with significant cells highlighted in light red using Matplotlib
-    # # plt.figure(figsize=(12, 10))
-    # # heatmap = plt.imshow(p_values_df, cmap='Blues', aspect='auto', vmin=0, vmax=1)
+    # # Display p-values within significant cells
+    # for i in range(p_values_df.shape[0]):
+    #     for j in range(p_values_df.shape[1]):
+    #         p_value = p_values_df.iloc[i, j]
+    #         if significant_cells.iloc[i, j]:
+    #             plt.text(j, i, f'{p_value:.6f}', ha='center', va='center', color='black')
 
-    # # # Display p-values within significant cells
-    # # for i in range(p_values_df.shape[0]):
-    # #     for j in range(p_values_df.shape[1]):
-    # #         p_value = p_values_df.iloc[i, j]
-    # #         if significant_cells.iloc[i, j]:
-    # #             plt.text(j, i, f'{p_value:.6f}', ha='center', va='center', color='black')
+    # # Highlight significant cells in light red
+    # significant_cells = significant_cells.astype(float)
+    # heatmap = plt.imshow(significant_cells, cmap='gray', aspect='auto', vmin=0, vmax=1, extent=[-0.5, significant_cells.shape[1] - 0.5, -0.5, significant_cells.shape[0] - 0.5])
 
-    # # # Highlight significant cells in light red
-    # # significant_cells = significant_cells.astype(float)
-    # # heatmap = plt.imshow(significant_cells, cmap='gray', aspect='auto', vmin=0, vmax=1, extent=[-0.5, significant_cells.shape[1] - 0.5, -0.5, significant_cells.shape[0] - 0.5])
+    # plt.title('P-Values Heatmap (Bonferroni Corrected)')
+    # # plt.colorbar(heatmap, orientation='vertical', label='P-Values')
+    # # plt.grid(True, linestyle='--', linewidth=0.5, color='black', which='both')
 
-    # # plt.title('P-Values Heatmap (Bonferroni Corrected)')
-    # # # plt.colorbar(heatmap, orientation='vertical', label='P-Values')
-    # # # plt.grid(True, linestyle='--', linewidth=0.5, color='black', which='both')
+    # # Label the axes with column names (0-100)
+    # plt.xticks(range(p_values_df.shape[1]), p_values_df.columns)
+    # plt.yticks(range(p_values_df.shape[0]), p_values_df.index)
 
-    # # # Label the axes with column names (0-100)
-    # # plt.xticks(range(p_values_df.shape[1]), p_values_df.columns)
-    # # plt.yticks(range(p_values_df.shape[0]), p_values_df.index)
-
-    # # plt.show()
+    # plt.show()
     # column_headers = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     # row_headers = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
     # # Number of comparisons
@@ -653,14 +714,14 @@ def main():
     #COMBINED PLOT
     combined_df.sort_values(by=['Percent Step Cycle'], inplace=True)
     bin_edges = [i for i in range(0, 101, 10)]
-    sns.histplot(data=combined_df, x="Percent Step Cycle", bins=bin_edges, kde=True)
-    plt.ylabel('Count',fontweight='bold')
-    plt.xlabel('Percent Step Cycle',fontweight='bold')
-    plt.tight_layout()
-    plt.savefig('alternations_step_cycle_first_combined.png',dpi=400)
-    plt.close()
     #t-test compare bin counts
     t_test_bins(bin_count_subject,bin_edges)
+    # sns.histplot(data=combined_df, x="Percent Step Cycle", bins=bin_edges, kde=True)
+    # plt.ylabel('Count',fontweight='bold')
+    # plt.xlabel('Percent Step Cycle',fontweight='bold')
+    # plt.tight_layout()
+    # plt.savefig('alternations_step_cycle_first_combined.png',dpi=400)
+    # plt.close()
 
     #check normality of the data
     # stat, p = shapiro(df['Percent Step Cycle'])
