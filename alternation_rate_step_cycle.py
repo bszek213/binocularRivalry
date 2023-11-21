@@ -493,6 +493,7 @@ def t_test_bins(dict_inst,bin_edges):
 
     # Create a DataFrame with the results
     results_df = pd.DataFrame(results, columns=['Column1', 'Column2', 't_stat', 'p_value'])
+    print(results_df)
     results_df = results_df.replace(np.nan, 1)
     cmap = sns.color_palette("YlOrRd", as_cmap=True)
     # Pivot the results DataFrame for easy plotting
