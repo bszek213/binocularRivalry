@@ -448,6 +448,7 @@ def t_test_bins(dict_inst,bin_edges):
 
     # Create the DataFrame after the outer loop
     df = pd.DataFrame(bins_dict).dropna(axis=1, how='all')
+    print(df)
     # PLOT OF ALL BARPLOTS
     fig, ax = plt.subplots(2, 1, figsize=(12, 8))
     #histogram with error bars
