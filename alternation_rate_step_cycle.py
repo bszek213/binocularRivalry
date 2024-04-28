@@ -496,6 +496,9 @@ def t_test_bins(dict_inst,bin_edges):
     results_df = pd.DataFrame(results, columns=['Column1', 'Column2', 't_stat', 'p_value'])
     print(results_df)
     results_df = results_df.replace(np.nan, 1)
+    #replace any pvalue greater than 1, make it one
+    results_df['p_value'] = np.where(results_df['p_value'] > 1, 1, results_df['p_value'])
+    results_df['p_value'] = np.where(results_df['p_value'] < 0, 1, results_df['p_value'])
     cmap = sns.color_palette("YlOrRd", as_cmap=True)
     # Pivot the results DataFrame for easy plotting
     heatmap_data = results_df.pivot(index='Column1', columns='Column2', values='p_value')
